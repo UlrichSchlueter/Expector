@@ -3,6 +3,7 @@ sensors:
       type: tcp
       host: localhost
       port: 2222
+      comment: Wait for port 2222 on local host to become available
         
     - sensor: testSSH2
       type: tcp
@@ -13,16 +14,28 @@ sensors:
       type: filecontent
       name: "log.file"
       test: "master1 works"
-      comment: Wait for log.file to add master1 works"
+      comment: Wait for log.file to add master1 works
 
     - sensor: logfile2
       type: filecontent
       name: "log.file2"
       test: "master1 works"
-      comment: Wait for log.file2 to add master1 works"
+      comment: Wait for log.file2 to add master1 works
+
+    - sensor: script
+      type: script
+      name: ./sensor1.sh 1 2 3
+      comment: Run sensor1 script
 
 
 expect:
+
+    - metric: Script
+      steps:
+        - sensor.script: 1      
+      whenDone:
+        scriptDone: 1
+
     - metric: couldSSHToBox
       steps:
         - sensor.testSSH: 0
@@ -37,6 +50,7 @@ expect:
         - sensor.testSSH: 1
         - sensor.testSSH: 0
         - metric.file: 1
+        - metric.scriptDone: 1
       whenDone:
         DONE: 1
 

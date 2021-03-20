@@ -5,6 +5,8 @@ import time
 import subprocess
 import socket
 import os
+import threading
+
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -23,6 +25,7 @@ class Expector:
         self.expecters={}
         self.sensors={}
         self.metricResults={}
+        
 
     def confToExpects(self,expects):
         for e in expects:
@@ -46,12 +49,38 @@ class Expector:
                 se.comment=s['comment']
             se.data=s  
             self.sensors[se.name]=se
+    
+    def selectSensors(self):
+        sensorNames={}
+        for e in self.expecters.values():
+            if e.finished==False:
+                step=e.getCurrentStep()
+                sName=step.sensorName
+                if sName in sensorNames:
+                    sensorNames[sName]+=1
+                else:
+                    sensorNames[sName]=1
+        return sensorNames
 
     def doSensors(self):
         lastRun={}
-        for sensor in self.sensors.values():                    
-            res=sensor.getSensorData()
-            lastRun["sensor."+sensor.name]=res
+        actions=[]
+        sensorNames=self.selectSensors()
+        for sensor in self.sensors.values(): 
+            sName="sensor."+sensor.name
+            if sName in sensorNames:             
+                action=SenorAction(sensor.name,sensor)
+                action.start()
+                actions.append(action)
+            else:
+                #print("Skipping " + sensor.name)
+                pass
+
+        for action in actions:                    
+            action.join()
+            
+            lastRun["sensor."+action.sensor.name]=action.sensor.lastResult
+                                                      
         return lastRun
     
 
@@ -69,12 +98,18 @@ class Expector:
                         comment=" ("+ sensor.comment+")"
                     else:
                         comment=""
-                    print ("Waiting for " + step.sensorName + comment)
+                    print ("Waiting for " + e.metric+":"+step.sensorName +" to become " + str(step.expectedValue) + comment)
                     stuffLeftToDo+=1
                     if step.sensorName in checkThis:
                         if step.expectedValue==checkThis[step.sensorName]:
                             step.res=step.expectedValue
                             print ("Progressing:"+ step.id)
+                            if e.getCurrentStep() is None:
+                                e.finished=True
+                                for x in e.whenDone:
+                                    self.metricResults['metric.'+x]=e.whenDone[x]
+                                    print ("Metric "+e.metric+ " done.")
+                            
                 else:                    
                     for x in e.whenDone:
                         self.metricResults['metric.'+x]=e.whenDone[x]
@@ -104,14 +139,24 @@ class Step:
         self.res=None
         self.id=""
 
+class SenorAction (threading.Thread):
+    def __init__(self,threadID,sensor):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.sensor=sensor
+        
+    def run(self):
+        self.sensor.getSensorData()
+
 class Sensor:
-    def __init__(self,name):
+    def __init__(self,name):      
         self.name=name
         self.data={}
         self.lastResult=None
         self.file_lastread=0
         self.comment=""
 
+        
     def getSensorData(self):
         if self.data["type"]=="tcp":
             port=self.data["port"]
@@ -123,6 +168,11 @@ class Sensor:
             test=self.data["test"]
             res=self.sensor_filecontent(filename,test)
             self.lastResult=res
+        elif self.data["type"]=="script":
+            cmd=self.data["name"]
+            sp = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
+            sp.wait(timeout=5)
+            self.lastResult=sp.returncode
         else:
             print ("Unknown type"+self.data["type"])
             self.lastResult=None
@@ -135,7 +185,7 @@ class Sensor:
             s.connect((host, port))           
             res=1
         except Exception as e:
-            print (e)
+            #print (e)
             e=e
             res=0
         return res
@@ -150,10 +200,10 @@ class Sensor:
                 self.file_lastread=0
             with open(name, "r") as f:
                 f.seek(self.file_lastread)
-                print ("File :"+name + " "+ str(self.file_lastread))
+                #print ("File :"+name + " "+ str(self.file_lastread))
                 line = f.readline()
                 while line:
-                    print ("line:>"+line+"<")
+                    #print ("line:>"+line+"<")
                     if string in line:
                         res=1
                         print ("File string found :"+string)
@@ -162,7 +212,7 @@ class Sensor:
                 self.file_lastread=f.tell()
             
         except Exception as e:
-            print (e)
+            #print (e)
             e=e
             self.file_lastread=0
         return res

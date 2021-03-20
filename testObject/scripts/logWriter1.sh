@@ -9,7 +9,7 @@ EOF
 
 FILE=$1
 
-echo "START" > $FILE
+echo "START" >> $FILE
 
 sleep 5
 
