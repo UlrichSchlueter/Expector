@@ -1,0 +1,31 @@
+
+---
+
+- after: 1
+  name: "cleanup"
+  command: rm log.file 2>&1 >> test.log
+
+- after: 1
+  name: "test1 script"
+  command: testObject/scripts/test1.sh 2>&1 >> test.log
+
+
+- after: 5
+  name: "Docker ssh"
+  command: testObject/scripts/dockerXsecs.sh 5 2>&1 >> test.log
+
+- after: 7
+  name: "Hello"
+  command: echo "1" && sleep 10 && echo "Hello" >> test.log
+
+
+- after: 7
+  name: "Hello"
+  command: echo "1" && sleep 10 && echo "Hello" >> test.log
+
+- after: 20
+  name: "Log"
+  command: testObject/scripts/logWriter1.sh log.file 2>&1 >> test.log
+
+
+

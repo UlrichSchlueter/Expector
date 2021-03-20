@@ -1,0 +1,56 @@
+sensors:
+    - sensor: testSSH
+      type: tcp
+      host: localhost
+      port: 2222
+        
+    - sensor: testSSH2
+      type: tcp
+      host: localhost
+      port: 2223
+
+    - sensor: logfile
+      type: filecontent
+      name: "log.file"
+      test: "master1 works"
+      comment: Wait for log.file to add master1 works"
+
+    - sensor: logfile2
+      type: filecontent
+      name: "log.file2"
+      test: "master1 works"
+      comment: Wait for log.file2 to add master1 works"
+
+
+expect:
+    - metric: couldSSHToBox
+      steps:
+        - sensor.testSSH: 0
+        - sensor.testSSH: 1
+        - sensor.testSSH: 0
+      whenDone:
+        couldSSHToBoxFlag: 1
+        
+    - metric: couldSSHToBox2
+      steps:
+        - metric.couldSSHToBoxFlag: 1        
+        - sensor.testSSH: 1
+        - sensor.testSSH: 0
+        - metric.file: 1
+      whenDone:
+        DONE: 1
+
+    - metric: file
+      steps:       
+        - metric.couldSSHToBoxFlag: 1 
+        - sensor.logfile: 1        
+        - sensor.logfile2: 1 
+      whenDone:
+        file: 1
+
+    - metric: file2
+      steps:       
+        - metric.couldSSHToBoxFlag: 1 
+        - sensor.logfile2: 1        
+      whenDone:
+        file: 1
