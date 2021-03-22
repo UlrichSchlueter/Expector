@@ -6,19 +6,12 @@ import subprocess
 import socket
 import os
 import threading
-
+import re
 
 pp = pprint.PrettyPrinter(indent=4)
 
-
-
 DONE="done"
 RES="result"
-
-
-
-
-
 
 class Expector:
     def __init__(self,filename):
@@ -45,7 +38,7 @@ class Expector:
             stuffLeftToDo=self.matchExpectors(self.lastRun)
             if stuffLeftToDo==0:
                 break           
-            time.sleep(1)
+            time.sleep(3)
   
         
 
@@ -179,6 +172,7 @@ class Sensor:
         self.lastResult=None
         self.file_lastread=0
         self.comment=""
+        self.pattern=re.compile("EXPECT::(.*?)::")
 
         
     def getSensorData(self):
@@ -193,10 +187,18 @@ class Sensor:
             res=self.sensor_filecontent(filename,test)
             self.lastResult=res
         elif self.data["type"]=="script":
-            cmd=self.data["name"]
-            sp = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
+            cmd=self.data["command"]
+            sp = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)            
+            stdout, stderr = sp.communicate()
             sp.wait(timeout=10)
-            self.lastResult=sp.returncode
+            fullOutput=stdout+stderr
+            found=self.pattern.findall(fullOutput)
+            if len(found)==0:
+                self.lastResult=-1
+            else:  
+                self.lastResult=found[0].strip()
+            print (fullOutput)
+            
         else:
             print ("Unknown type"+self.data["type"])
             self.lastResult=None
