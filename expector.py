@@ -10,21 +10,43 @@ import threading
 
 pp = pprint.PrettyPrinter(indent=4)
 
-expectorfile=sys.argv[1]
+
 
 DONE="done"
 RES="result"
-startTime=time.time()
 
-print (expectorfile)
+
+
 
 
 
 class Expector:
-    def __init__(self):
+    def __init__(self,filename):
         self.expecters={}
         self.sensors={}
         self.metricResults={}
+        self.file=filename
+        self.lastRun={}
+        self.loadData()
+        self.state={}
+
+    def loadData(self):
+        with open(self.file) as file:
+            config = yaml.full_load(file)
+            pp.pprint(config)
+
+        self.confToSensors(config["sensors"])
+        self.confToExpects(config["expect"])
+
+    def run(self):
+        self.startTime=time.time()
+        while True:        
+            self.lastRun=self.doSensors()
+            stuffLeftToDo=self.matchExpectors(self.lastRun)
+            if stuffLeftToDo==0:
+                break           
+            time.sleep(1)
+  
         
 
     def confToExpects(self,expects):
@@ -88,6 +110,7 @@ class Expector:
         stuffLeftToDo=0
         checkThis={ **self.metricResults, ** lastRunResults}
         pp.pprint(checkThis)
+        newState={}
         for e in self.expecters.values():
             if e.finished==False:
                 step=e.getCurrentStep()
@@ -99,6 +122,7 @@ class Expector:
                     else:
                         comment=""
                     print ("Waiting for " + e.metric+":"+step.sensorName +" to become " + str(step.expectedValue) + comment)
+                    newState[e.metric]={ "Step": step.sensorName + ":" + str(step.expectedValue), "Comment": comment}
                     stuffLeftToDo+=1
                     if step.sensorName in checkThis:
                         if step.expectedValue==checkThis[step.sensorName]:
@@ -115,7 +139,7 @@ class Expector:
                         self.metricResults['metric.'+x]=e.whenDone[x]
                     print ("Metric "+e.metric+ " done.")
                     e.finished=True
-
+        self.state=newState
         return stuffLeftToDo
 
 
@@ -171,7 +195,7 @@ class Sensor:
         elif self.data["type"]=="script":
             cmd=self.data["name"]
             sp = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
-            sp.wait(timeout=5)
+            sp.wait(timeout=10)
             self.lastResult=sp.returncode
         else:
             print ("Unknown type"+self.data["type"])
@@ -217,28 +241,8 @@ class Sensor:
             self.file_lastread=0
         return res
 
-
-
-with open(expectorfile) as file:
-    config = yaml.full_load(file)
-    pp.pprint(config)
-
-
-app=Expector()
-app.confToSensors(config["sensors"])
-app.confToExpects(config["expect"])
-
-
-
-
-while True:
-    
-    lastRunResults=app.doSensors()
-    stuffLeftToDo=app.matchExpectors(lastRunResults)
-    if stuffLeftToDo==0:
-        break   
-    
-    time.sleep(1)
-  
-
-print ("Fineeze")
+if __name__ == "__main__":
+    expectorfile=sys.argv[1]
+    e=Expector(expectorfile)
+    e.run()
+    print ("Fineeze")

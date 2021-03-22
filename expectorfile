@@ -25,14 +25,14 @@ sensors:
     - sensor: script
       type: script
       name: ./sensor1.sh 1 2 3
-      comment: Run sensor1 script
+      comment: Check sensor1 script
 
 
 expect:
 
     - metric: Script
       steps:
-        - sensor.script: 1      
+        - sensor.script: 1       
       whenDone:
         scriptDone: 1
 
