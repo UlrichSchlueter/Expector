@@ -1,0 +1,8 @@
+jinja2
+pyyaml
+requests
+flask
+Flask-CORS
+Flask-executor
+
+
