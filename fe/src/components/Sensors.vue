@@ -1,8 +1,12 @@
 <template>
   <div class="border">
-    <ul id="example-1">
-      <li v-for="item in sensors" :key="item.sensors">
-        {{ item }}
+    <h2>Active Sensors</h2>
+    <ul id="sensors">
+      <li v-for="(evalue, ekey) in sensors" :key="ekey">
+        {{ ekey }}:
+        <p v-for="(value, key) in evalue" :key="key">
+          {{ key }} : Last result={{ value }}
+        </p>
       </li>
     </ul>
   </div>

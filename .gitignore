@@ -1,0 +1,7 @@
+fe/node_modules
+fe/.vsocde
+be/.vscode
+.vscode
+fe/node_modules/
+be/__pycache__
+fe/node_modules/.cache

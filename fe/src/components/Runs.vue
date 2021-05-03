@@ -1,6 +1,6 @@
 <template>
   <b-tab :title="purpose" :disabled="disabled">
-    <div class="border">
+    <div>
       <b-list-group>
         <b-list-group-item
           v-for="item in metrics"
@@ -8,7 +8,9 @@
           button
           v-on:click="triggerMe(item.name)"
         >
-          {{ item.name }} {{ item.state }} {{ item.metrices }}
+          <h4>Run# {{ item.id }}</h4>
+          File: {{ item.filename }} StartTime: {{ item.startTime }} EndTime:
+          {{ item.endTime }}
         </b-list-group-item>
       </b-list-group>
     </div>

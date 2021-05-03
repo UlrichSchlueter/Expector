@@ -21,8 +21,12 @@ class Expector:
         self.metricResults = {}
         self.file = filename
         self.lastRun = {}
-        self.loadData()
         self.state = {}
+        self.allWhenDones = {}
+        self.dependencies = {}
+
+        self.loadData()
+        self.calcDependencies()
 
     def loadData(self):
         with open(self.file) as file:
@@ -44,6 +48,7 @@ class Expector:
     def confToExpects(self, expects):
         for e in expects:
             ne = Expect(e["metric"])
+
             count = 0
             for s in e['steps']:
                 k = list(s.keys())
@@ -54,6 +59,9 @@ class Expector:
                 ns.id = ne.metric + ":" + str(count)
                 ns.counter = count
             ne.whenDone = e["whenDone"]
+            for key in e["whenDone"]:
+                ne.whenDoneValue = e["whenDone"][key]
+                self.allWhenDones[key+":"+str(ne.whenDoneValue)] = ne.metric
 
             self.expecters[ne.metric] = ne
 
@@ -65,10 +73,71 @@ class Expector:
             se.data = s
             self.sensors[se.name] = se
 
+    def calcDependencies(self):
+
+        links = []
+        nodemap = {}
+        nodes = [{'id': 'Start'}]
+        nodemap['Start'] = 0
+        count = 1
+        for e in self.expecters:
+            expector = self.expecters[e]
+            nodes.append({'id': expector.metric})
+            nodemap[expector.metric] = count
+            count += 1
+
+        #  {source: 0, target: 1, weight: 10},
+        for e in self.expecters:
+            expector = self.expecters[e]
+            hasDependencies = False
+            for s in expector.steps:
+                print(e, s)
+                if s.sensorName.startswith('metric.'):
+                    hasDependencies = True
+                    dependsonKey = s.sensorName[7:]
+                    dependsonValue = s.expectedValue
+                    searchKey = dependsonKey + ":" + str(dependsonValue)
+                    if searchKey in self.allWhenDones:
+                        m = self.allWhenDones[searchKey]
+                        source = nodemap[m]
+                        target = nodemap[expector.metric]
+                        links.append(
+                            {'source': source, 'target': target, 'weight': 10},)
+                    else:
+                        print("haee ?")
+            if hasDependencies == False:
+                links.append(
+                    {'source': 0, 'target': nodemap[expector.metric], 'weight': 10},)
+
+        self.dependencies['nodes'] = nodes
+        self.dependencies['links'] = links
+
+    def getDependencyState(self):
+        lastChange = 0
+        for e in self.dependencies['nodes']:
+
+            key = e['id']
+            if key == 'Start':
+                e['isFinished'] = True
+                e['stepsLeft'] = 0
+                e['stepsDone'] = 0
+            else:
+                m = self.expecters[key]
+                if m.lastChange > lastChange:
+                    lastChange = m.lastChange
+                e['stepsLeft'] = m.stepsLeft
+                e['stepsDone'] = m.stepsDone
+                if m.isFinished == True:
+                    e['isFinished'] = True
+                else:
+                    e['isFinished'] = False
+        self.dependencies['lastChange'] = lastChange
+        return self.dependencies
+
     def selectSensors(self):
         sensorNames = {}
         for e in self.expecters.values():
-            if e.finished == False:
+            if e.isFinished == False:
                 step = e.getCurrentStep()
                 if not step is None:
                     sName = step.sensorName
@@ -89,7 +158,7 @@ class Expector:
                 action.start()
                 actions.append(action)
             else:
-                #print("Skipping " + sensor.name)
+                # print("Skipping " + sensor.name)
                 pass
 
         for action in actions:
@@ -105,7 +174,7 @@ class Expector:
         pp.pprint(checkThis)
         newState = {}
         for e in self.expecters.values():
-            if e.finished == False:
+            if e.isFinished == False:
                 step = e.getCurrentStep()
 
                 if not step is None:
@@ -127,7 +196,7 @@ class Expector:
                             step.res = step.expectedValue
                             print("Progressing:" + step.id)
                             if e.getCurrentStep() is None:
-                                e.finished = True
+                                e.setFinished()
                                 for x in e.whenDone:
                                     self.metricResults['metric.' +
                                                        x] = e.whenDone[x]
@@ -137,7 +206,7 @@ class Expector:
                     for x in e.whenDone:
                         self.metricResults['metric.'+x] = e.whenDone[x]
                     print("Metric " + e.metric + " done.")
-                    e.finished = True
+                    e.setFinished()
         self.state = newState
         return stuffLeftToDo
 
@@ -148,12 +217,29 @@ class Expect:
         self.steps = []
         self.whenDone = {}
         self.isActive = False
-        self.finished = False
+        self.isFinished = False
+        self.stepsDone = 0
+        self.stepsLeft = 0
+        self.lastChange = time.time()
+        self.lastStepid = -1
 
     def getCurrentStep(self):
+        count = 0
         for s in self.steps:
             if s.res == '':
+                if s.id != self.lastStepid:
+                    self.lastStepid = s.id
+                    self.lastChange = time.time()
+                    self.stepsDone = count
+                    self.stepsLeft = len(self.steps)-self.stepsDone
                 return s
+            count += 1
+
+    def setFinished(self):
+        self.isFinished = True
+        self.lastChange = time.time()
+        self.stepsDone = len(self.steps)
+        self.stepsLeft = len(self.steps)-self.stepsDone
 
 
 class Step:
@@ -242,10 +328,10 @@ class Sensor:
                 self.file_lastread = 0
             with open(name, "r") as f:
                 f.seek(self.file_lastread)
-                #print ("File :"+name + " "+ str(self.file_lastread))
+                # print ("File :"+name + " "+ str(self.file_lastread))
                 line = f.readline()
                 while line:
-                    #print ("line:>"+line+"<")
+                    # print ("line:>"+line+"<")
                     if string in line:
                         res = "1"
                         print("File string found :"+string)
@@ -254,7 +340,7 @@ class Sensor:
                 self.file_lastread = f.tell()
 
         except Exception as e:
-            #print (e)
+            # print (e)
             e = e
             self.file_lastread = 0
         return res
@@ -263,5 +349,7 @@ class Sensor:
 if __name__ == "__main__":
     expectorfile = sys.argv[1]
     e = Expector(expectorfile)
+    print(e.dependencies)
     e.run()
+
     print("Fineeze")

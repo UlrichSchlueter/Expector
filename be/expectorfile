@@ -52,7 +52,7 @@ expect:
         - metric.file: 1
         - metric.scriptDone: 1
       whenDone:
-        DONE: 1
+        DONE-1: 1
 
     - metric: file
       steps:       
@@ -68,3 +68,43 @@ expect:
         - sensor.logfile2: 1        
       whenDone:
         file: 1
+
+    - metric: couldSSHToBox3
+      steps:
+        - metric.DONE-1: 1        
+        - sensor.testSSH: 1
+        - sensor.testSSH: 0
+        
+      whenDone:
+        DONE-2: 1
+
+    - metric: couldSSHToBox4
+      steps:
+        - metric.DONE-2: 1        
+        - sensor.testSSH: 1
+        - sensor.testSSH: 0
+       
+      whenDone:
+        DONE-3: 1
+
+    - metric: Script2
+      steps:
+        - metric.DONE-3: 1  
+        - sensor.script: "foo:bar"       
+      whenDone:
+        scriptDone2: 1
+
+    - metric: Script3
+      steps:
+        - metric.DONE-3: 1  
+        - sensor.script: "foo:bar"       
+      whenDone:
+        scriptDone3: 1
+
+
+    - metric: Script4
+      steps:
+        - metric.DONE-3: 1  
+        - sensor.script: "foo:bar"       
+      whenDone:
+        scriptDone4: 1

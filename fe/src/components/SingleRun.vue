@@ -1,12 +1,14 @@
 <template>
   <div class="border">
-    <h1>Run Name: {{ runid }}</h1>
     <b-button v-b-toggle.collapse-1>Show Steps</b-button>
     <b-card v-for="item in metrics" :key="item.name" :title="item.name">
+      {{ runid }}
       <b-card-text>
         <b-badge v-if="item.finished" variant="success">Finished</b-badge>
-        <b-badge v-else variant="info">Active</b-badge>
-
+        <b-badge v-else-if="item.stepsDone > 0" variant="warning"
+          >Active</b-badge
+        >
+        <b-badge v-else variant="secondary">Pending</b-badge>
         <p v-if="item.finished == false">
           Waiting for {{ item.currentStep.sensorName }} to become
           {{ item.currentStep.expectedValue }}
@@ -57,7 +59,7 @@ export default {
           .get(path)
           .then((res) => {
             // eslint-disable-next-line
-            console.error(res.data);
+            // console.error(res.data);
             this.metrics = res.data;
           })
           .catch((error) => {

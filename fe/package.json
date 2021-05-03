@@ -12,8 +12,18 @@
     "bootstrap": "^4.6.0",
     "bootstrap-vue": "^2.21.2",
     "core-js": "^3.6.5",
+    "d3": "^6.6.2",
+    "d3-dag": "^0.6.3",
+    "d3plus": "^2.0.0",
+    "dagre": "^0.8.5",
+    "plotly.js-dist": "^1.58.4",
+    "postcss-loader": "^4.2.0",
+    "sass-loader": "^10.1.1",
     "vue": "^2.6.11",
-    "vue-router": "^3.5.1"
+    "vue-moveable": "^1.8.10",
+    "vue-multipane": "^0.9.5",
+    "vue-router": "^3.5.1",
+    "vuetify": "^2.4.9"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "~4.5.0",

@@ -1,5 +1,5 @@
 <template>
-  <div class="border">
+  <div>
     <div>
       <b-form-select v-model="selected" :options="options"></b-form-select>
       <div class="mt-3">
@@ -24,6 +24,7 @@ export default {
         { value: 'expectorfile.simple', text: 'Simple' },
         { value: 'expectorfile', text: 'Full' },
       ],
+      message: 'Starter',
     };
   },
   methods: {
